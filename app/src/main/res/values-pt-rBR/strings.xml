@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">ToDo Tasks</string>
+    <string name="top_app_bar_title">Minhas Tarefas</string>
+    <string name="fab_add_task_content_description">Adicionar nova tarefa</string>
+    <string name="empty_tasks_message">Você não possui atividades.\nComece criando uma agora!</string>
+    <string name="task_item_delete_button_content_description">Excluir Tarefa</string>
+    <string name="add_task_dialog_title_add">Adicionar Nova Tarefa</string>
+    <string name="add_task_dialog_title_edit">Editar Tarefa</string>
+    <string name="add_task_dialog_label_title">Título</string>
+    <string name="add_task_dialog_label_description">Descrição (Opcional)</string>
+    <string name="add_task_dialog_button_add">Adicionar</string>
+    <string name="add_task_dialog_button_save">Salvar</string>
+    <string name="dialog_button_cancel">Cancelar</string>
+    <string name="delete_confirmation_dialog_title">Confirmar Exclusão</string>
+    <string name="delete_confirmation_dialog_message">Tem certeza de que deseja excluir a tarefa
+        \"%1$s\"?
+    </string>
+    <string name="dialog_button_delete">Excluir</string>
+</resources>
