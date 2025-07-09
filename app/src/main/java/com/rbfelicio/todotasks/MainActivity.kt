@@ -78,7 +78,6 @@ fun TodoListApp(viewModel: TasksViewModel) {
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var taskToDelete by remember { mutableStateOf<Task?>(null) }
 
-
     Scaffold(
         topBar = {
             TopAppBar(
