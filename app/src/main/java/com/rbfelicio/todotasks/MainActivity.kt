@@ -7,14 +7,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -30,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rbfelicio.todotasks.components.AddTaskDialog
@@ -73,7 +79,7 @@ fun TodoListApp() {
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                  showDialog = true
+                    showDialog = true
                 },
                 containerColor = MaterialTheme.colorScheme.secondary,
                 contentColor = MaterialTheme.colorScheme.onSecondary
@@ -90,7 +96,19 @@ fun TodoListApp() {
             if (tasks.isEmpty()) {
                 EmptyTasksView()
             } else {
-                TaskList(tasks = tasks)
+                TaskList(
+                    tasks = tasks,
+                    onTaskCheckedChanged = { taskToUpdate, isCompleted ->
+                        // Lógica para atualizar a tarefa na lista
+                        tasks = tasks.map { currentTask ->
+                            if (currentTask.id == taskToUpdate.id) {
+                                currentTask.copy(isCompleted = isCompleted)
+                            } else {
+                                currentTask
+                            }
+                        }
+                    }
+                )
             }
 
             if (showDialog) {
@@ -113,20 +131,29 @@ fun TodoListApp() {
 }
 
 @Composable
-fun TaskList(tasks: List<Task>) {
+fun TaskList(
+    tasks: List<Task>,
+    onTaskCheckedChanged: (Task, Boolean) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp) // Espaçamento entre os cards
     ) {
-        items(tasks) { task ->
-            TaskItem(task = task)
+        items(tasks, key = { task -> task.id }) { task ->
+            TaskItem(
+                task = task,
+                onTaskCheckedChanged = onTaskCheckedChanged
+            )
         }
     }
 }
 
 @Composable
-fun TaskItem(task: Task) {
+fun TaskItem(
+    task: Task,
+    onTaskCheckedChanged: (Task, Boolean) -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxSize(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -134,20 +161,36 @@ fun TaskItem(task: Task) {
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row( // Usar Row para alinhar Checkbox e o conteúdo do texto
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(), // Para que a Row ocupe a largura do Card
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = task.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+            Checkbox(
+                checked = task.isCompleted,
+                onCheckedChange = { isChecked ->
+                    onTaskCheckedChanged(task, isChecked)
+                }
             )
-            task.description?.let {
+            Spacer(modifier = Modifier.width(8.dp)) // Espaçamento entre Checkbox e texto
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
                 Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) // Cor um pouco mais clara
+                    text = task.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
                 )
+                task.description?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), // Cor um pouco mais clara
+                        textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
+                    )
+                }
             }
         }
     }
