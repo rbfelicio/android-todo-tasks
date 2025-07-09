@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.rbfelicio.todotasks.components.AddTaskDialog
 import com.rbfelicio.todotasks.ui.theme.ToDoTasksTheme
 
 data class Task(
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
 fun TodoListApp() {
     // Estado para armazenar a lista de tarefas (inicialmente vazia)
     var tasks by remember { mutableStateOf(emptyList<Task>()) }
+    var showDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -71,10 +73,7 @@ fun TodoListApp() {
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    // Lógica para adicionar uma nova tarefa (será implementada depois)
-                    // Por enquanto, vamos adicionar uma tarefa de exemplo:
-                    val newTaskId = (tasks.maxOfOrNull { it.id } ?: 0) + 1
-                    tasks = tasks + Task(id = newTaskId, title = "Nova Tarefa $newTaskId")
+                  showDialog = true
                 },
                 containerColor = MaterialTheme.colorScheme.secondary,
                 contentColor = MaterialTheme.colorScheme.onSecondary
@@ -92,6 +91,22 @@ fun TodoListApp() {
                 EmptyTasksView()
             } else {
                 TaskList(tasks = tasks)
+            }
+
+            if (showDialog) {
+                AddTaskDialog(
+                    onDismissRequest = { showDialog = false },
+                    onConfirmClick = { title, description ->
+                        val newTaskId = (tasks.maxOfOrNull { it.id } ?: 0) + 1
+                        val newTask = Task(
+                            id = newTaskId,
+                            title = title,
+                            description = description.ifBlank { null }
+                        )
+                        tasks = tasks + newTask
+                        showDialog = false
+                    }
+                )
             }
         }
     }
@@ -141,11 +156,13 @@ fun TaskItem(task: Task) {
 @Composable
 fun EmptyTasksView() {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Você não possui atividades. Comece criando uma agora!",
+            text = "Você não possui atividades.\nComece criando uma agora!",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f) // Cor um pouco mais clara
         )
