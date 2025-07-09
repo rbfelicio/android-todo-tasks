@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -71,7 +72,6 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoListApp(viewModel: TasksViewModel) {
-    // Estado para armazenar a lista de tarefas (inicialmente vazia)
     val tasks by viewModel.tasks.collectAsState()
     var showTaskInputDialog by remember { mutableStateOf(false) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
@@ -82,7 +82,7 @@ fun TodoListApp(viewModel: TasksViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Minhas Tarefas") },
+                title = { Text(stringResource(id = R.string.top_app_bar_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -98,7 +98,7 @@ fun TodoListApp(viewModel: TasksViewModel) {
                 containerColor = MaterialTheme.colorScheme.secondary,
                 contentColor = MaterialTheme.colorScheme.onSecondary
             ) {
-                Icon(Icons.Filled.Add, "Adicionar nova tarefa")
+                Icon(Icons.Filled.Add, stringResource(id = R.string.fab_add_task_content_description))
             }
         }
     ) { innerPadding ->
@@ -119,7 +119,7 @@ fun TodoListApp(viewModel: TasksViewModel) {
                         taskToEdit = task
                         showTaskInputDialog = true
                     },
-                    onDeleteClick = { task -> // Quando o ícone de lixeira é clicado
+                    onDeleteClick = { task ->
                         taskToDelete = task
                         showDeleteConfirmDialog = true
                     }
@@ -134,15 +134,13 @@ fun TodoListApp(viewModel: TasksViewModel) {
                         taskToEdit = null
                     },
                     onConfirmClick = { title, description, id ->
-                        if (id != null && taskToEdit != null) { // Editando tarefa existente
-                            // Criar uma cópia da tarefa com as novas informações, mantendo o ID e isCompleted
+                        if (id != null && taskToEdit != null) {
                             val updatedTask = taskToEdit!!.copy(
                                 title = title,
                                 description = description.ifBlank { null }
-                                // `isCompleted` e `id` são preservados de `taskToEdit`
                             )
                             viewModel.updateTask(updatedTask)
-                        } else { // Adicionando nova tarefa
+                        } else {
                             viewModel.addTask(title, description.ifBlank { null })
                         }
                         showTaskInputDialog = false
@@ -152,7 +150,7 @@ fun TodoListApp(viewModel: TasksViewModel) {
             }
             if (showDeleteConfirmDialog && taskToDelete != null) {
                 DeleteConfirmationDialog(
-                    taskTitle = taskToDelete!!.title, // Usamos !! pois showDeleteConfirmDialog só é true se taskToDelete não for null
+                    taskTitle = taskToDelete!!.title,
                     onDismissRequest = {
                         showDeleteConfirmDialog = false
                         taskToDelete = null
@@ -178,14 +176,14 @@ fun TaskList(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp) // Espaçamento entre os cards
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(tasks, key = { task -> task.id }) { task ->
             TaskItem(
                 task = task,
-                onTaskCheckedChanged = onTaskCheckedChanged, // Passa a lambda
-                onTaskClick = onTaskClick,             // Passa a lambda
-                onDeleteClick = onDeleteClick          // Passa a lambda
+                onTaskCheckedChanged = onTaskCheckedChanged,
+                onTaskClick = onTaskClick,
+                onDeleteClick = onDeleteClick
             )
         }
     }
@@ -200,17 +198,17 @@ fun TaskItem(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth() // Modificado de fillMaxSize
-            .clickable { onTaskClick(task) }, // Tornar o Card clicável
+            .fillMaxWidth()
+            .clickable { onTaskClick(task) },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-        Row( // Usar Row para alinhar Checkbox e o conteúdo do texto
+        Row(
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxWidth(), // Para que a Row ocupe a largura do Card
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
@@ -219,9 +217,9 @@ fun TaskItem(
                     onTaskCheckedChanged(task)
                 }
             )
-            Spacer(modifier = Modifier.width(8.dp)) // Espaçamento entre Checkbox e texto
+            Spacer(modifier = Modifier.width(8.dp))
             Column(
-                modifier = Modifier.weight(1f) // Dar peso para a coluna ocupar o espaço restante
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = task.title,
@@ -233,7 +231,7 @@ fun TaskItem(
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), // Cor um pouco mais clara
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
                     )
                 }
@@ -241,8 +239,8 @@ fun TaskItem(
             IconButton(onClick = { onDeleteClick(task) }) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
-                    contentDescription = "Excluir Tarefa",
-                    tint = MaterialTheme.colorScheme.error // Usar uma cor que indique perigo/erro
+                    contentDescription = stringResource(id = R.string.task_item_delete_button_content_description),
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -258,9 +256,9 @@ fun EmptyTasksView() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Você não possui atividades.\nComece criando uma agora!",
+            text = stringResource(id = R.string.empty_tasks_message),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f) // Cor um pouco mais clara
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
     }
 }
@@ -270,10 +268,9 @@ fun EmptyTasksView() {
 fun DefaultPreview() {
     ToDoTasksTheme {
         class PreviewTasksViewModel : TasksViewModel(
-            TasksRepository( // O TasksRepository precisa de um TaskDao
-                object : TaskDao { // Este é o nosso stub para TaskDao
+            TasksRepository(
+                object : TaskDao {
                     override fun getAllTasks(): Flow<List<Task>> {
-                        // Retorna um Flow com uma lista de tarefas de exemplo para o preview
                         return flowOf(
                             listOf(
                                 Task(
@@ -293,7 +290,6 @@ fun DefaultPreview() {
                     }
 
                     override suspend fun getTaskById(taskId: Int): Task? {
-                        // Para preview, pode retornar null ou uma tarefa específica se necessário
                         if (taskId == 1) {
                             return Task(
                                 id = 1,
@@ -306,25 +302,22 @@ fun DefaultPreview() {
                     }
 
                     override suspend fun insertTask(task: Task): Long {
-                        // Em um stub, geralmente não fazemos nada ou apenas logamos
+
                         println("PreviewTaskDao: insertTask chamada com $task")
-                        return task.id.toLong() // Pode retornar um ID de exemplo
+                        return task.id.toLong()
                     }
 
                     override suspend fun updateTask(task: Task) {
-                        // Em um stub, geralmente não fazemos nada ou apenas logamos
                         println("PreviewTaskDao: updateTask chamada com $task")
                     }
 
                     override suspend fun deleteTask(task: Task) {
-                        // Em um stub, geralmente não fazemos nada ou apenas logamos
                         println("PreviewTaskDao: deleteTask chamada com $task")
                     }
                 }
             )
         ) {
             init {
-                // Forçar um estado inicial para o preview se necessário
                 _tasks.value = listOf(Task(1, "Preview Task 1"))
             }
         }
