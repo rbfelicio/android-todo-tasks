@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,6 +26,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,6 +43,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rbfelicio.todotasks.components.AddTaskDialog
+import com.rbfelicio.todotasks.components.DeleteConfirmationDialog
 import com.rbfelicio.todotasks.ui.theme.ToDoTasksTheme
 
 data class Task(
@@ -68,6 +71,9 @@ fun TodoListApp() {
     var tasks by remember { mutableStateOf(emptyList<Task>()) }
     var showDialog by remember { mutableStateOf(false) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var taskToDelete by remember { mutableStateOf<Task?>(null) }
+
 
     Scaffold(
         topBar = {
@@ -114,6 +120,10 @@ fun TodoListApp() {
                     },
                     onTaskClick = { task ->
                         taskToEdit = task
+                    },
+                    onDeleteClick = { task -> // Quando o ícone de lixeira é clicado
+                        taskToDelete = task
+                        showDeleteConfirmDialog = true
                     }
                 )
             }
@@ -150,6 +160,20 @@ fun TodoListApp() {
                     }
                 )
             }
+            if (showDeleteConfirmDialog && taskToDelete != null) {
+                DeleteConfirmationDialog(
+                    taskTitle = taskToDelete!!.title, // Usamos !! pois showDeleteConfirmDialog só é true se taskToDelete não for null
+                    onDismissRequest = {
+                        showDeleteConfirmDialog = false
+                        taskToDelete = null
+                    },
+                    onConfirmClick = {
+                        tasks = tasks.filterNot { it.id == taskToDelete!!.id }
+                        showDeleteConfirmDialog = false
+                        taskToDelete = null
+                    }
+                )
+            }
         }
     }
 }
@@ -158,7 +182,8 @@ fun TodoListApp() {
 fun TaskList(
     tasks: List<Task>,
     onTaskCheckedChanged: (Task, Boolean) -> Unit,
-    onTaskClick: (Task) -> Unit // Adicionar este parâmetro
+    onTaskClick: (Task) -> Unit,
+    onDeleteClick: (Task) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -169,7 +194,8 @@ fun TaskList(
             TaskItem(
                 task = task,
                 onTaskCheckedChanged = onTaskCheckedChanged,
-                onTaskClick = onTaskClick
+                onTaskClick = onTaskClick,
+                onDeleteClick = onDeleteClick
             )
         }
     }
@@ -179,7 +205,8 @@ fun TaskList(
 fun TaskItem(
     task: Task,
     onTaskCheckedChanged: (Task, Boolean) -> Unit,
-    onTaskClick: (Task) -> Unit
+    onTaskClick: (Task) -> Unit,
+    onDeleteClick: (Task) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -221,7 +248,13 @@ fun TaskItem(
                     )
                 }
             }
-            Icon(Icons.Filled.Edit, contentDescription = "Editar Tarefa")
+            IconButton(onClick = { onDeleteClick(task) }) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Excluir Tarefa",
+                    tint = MaterialTheme.colorScheme.error // Usar uma cor que indique perigo/erro
+                )
+            }
         }
     }
 }
