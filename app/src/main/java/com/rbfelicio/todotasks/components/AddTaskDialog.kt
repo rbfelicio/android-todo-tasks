@@ -11,7 +11,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.rbfelicio.todotasks.Task
+import androidx.compose.ui.res.stringResource
+import com.rbfelicio.todotasks.R
+import com.rbfelicio.todotasks.data.Task
 
 @Composable
 fun AddTaskDialog(
@@ -26,27 +28,30 @@ fun AddTaskDialog(
             title = existingTask.title
             description = existingTask.description ?: ""
         } else {
-            // Se for para adicionar uma nova, limpar os campos
-            // (geralmente não necessário se o diálogo é recriado, mas bom para robustez)
-            // title = ""
-            // description = ""
+            title = ""
+            description = ""
         }
     }
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("Adicionar Nova Tarefa") },
+        title = { Text(
+            stringResource(
+            if (existingTask == null) R.string.add_task_dialog_title_add
+            else R.string.add_task_dialog_title_edit
+        )
+        ) },
         text = {
             Column {
                 TextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Título") },
+                    label = { Text(stringResource(id = R.string.add_task_dialog_label_title)) },
                     singleLine = true
                 )
                 TextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Descrição (Opcional)") }
+                    label = { Text(stringResource(id = R.string.add_task_dialog_label_description)) }
                 )
             }
         },
@@ -58,12 +63,17 @@ fun AddTaskDialog(
                     }
                 }
             ) {
-                Text(if (existingTask == null) "Adicionar" else "Salvar")
+                Text(
+                    stringResource(
+                        if (existingTask == null) R.string.add_task_dialog_button_add
+                        else R.string.add_task_dialog_button_save
+                    )
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text("Cancelar")
+                Text(stringResource(id = R.string.dialog_button_cancel))
             }
         }
     )

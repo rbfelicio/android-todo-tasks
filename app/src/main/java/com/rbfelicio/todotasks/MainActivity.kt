@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -33,32 +32,38 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.rbfelicio.todotasks.components.AddTaskDialog
 import com.rbfelicio.todotasks.components.DeleteConfirmationDialog
+import com.rbfelicio.todotasks.data.Task
+import com.rbfelicio.todotasks.data.TaskDao
+import com.rbfelicio.todotasks.data.TasksRepository
+import com.rbfelicio.todotasks.ui.TasksViewModel
 import com.rbfelicio.todotasks.ui.theme.ToDoTasksTheme
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
-data class Task(
-    val id: Int,
-    val title: String,
-    val description: String? = null,
-    val isCompleted: Boolean = false
-)
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             ToDoTasksTheme {
-                TodoListApp()
+                val tasksViewModel: TasksViewModel = hiltViewModel()
+                TodoListApp(viewModel = tasksViewModel)
             }
         }
     }
@@ -66,19 +71,17 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoListApp() {
-    // Estado para armazenar a lista de tarefas (inicialmente vazia)
-    var tasks by remember { mutableStateOf(emptyList<Task>()) }
-    var showDialog by remember { mutableStateOf(false) }
+fun TodoListApp(viewModel: TasksViewModel) {
+    val tasks by viewModel.tasks.collectAsState()
+    var showTaskInputDialog by remember { mutableStateOf(false) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var taskToDelete by remember { mutableStateOf<Task?>(null) }
 
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Minhas Tarefas") },
+                title = { Text(stringResource(id = R.string.top_app_bar_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -89,12 +92,12 @@ fun TodoListApp() {
             FloatingActionButton(
                 onClick = {
                     taskToEdit = null
-                    showDialog = true
+                    showTaskInputDialog = true
                 },
                 containerColor = MaterialTheme.colorScheme.secondary,
                 contentColor = MaterialTheme.colorScheme.onSecondary
             ) {
-                Icon(Icons.Filled.Add, "Adicionar nova tarefa")
+                Icon(Icons.Filled.Add, stringResource(id = R.string.fab_add_task_content_description))
             }
         }
     ) { innerPadding ->
@@ -108,67 +111,51 @@ fun TodoListApp() {
             } else {
                 TaskList(
                     tasks = tasks,
-                    onTaskCheckedChanged = { taskToUpdate, isCompleted ->
-                        // Lógica para atualizar a tarefa na lista
-                        tasks = tasks.map { currentTask ->
-                            if (currentTask.id == taskToUpdate.id) {
-                                currentTask.copy(isCompleted = isCompleted)
-                            } else {
-                                currentTask
-                            }
-                        }
+                    onTaskCheckedChanged = { task ->
+                        viewModel.toggleTaskCompleted(task)
                     },
                     onTaskClick = { task ->
                         taskToEdit = task
+                        showTaskInputDialog = true
                     },
-                    onDeleteClick = { task -> // Quando o ícone de lixeira é clicado
+                    onDeleteClick = { task ->
                         taskToDelete = task
                         showDeleteConfirmDialog = true
                     }
                 )
             }
 
-            if (showDialog || taskToEdit != null) {
+            if (showTaskInputDialog || taskToEdit != null) {
                 AddTaskDialog(
                     existingTask = taskToEdit,
                     onDismissRequest = {
-                        showDialog = false
+                        showTaskInputDialog = false
                         taskToEdit = null
                     },
                     onConfirmClick = { title, description, id ->
-                        if (id != null) {
-                            tasks = tasks.map {
-                                if (it.id == id) {
-                                    it.copy(
-                                        title = title,
-                                        description = description.ifBlank { null })
-                                } else {
-                                    it
-                                }
-                            }
-                        } else {
-                            val newTaskId = (tasks.maxOfOrNull { it.id } ?: 0) + 1
-                            val newTask = Task(
-                                id = newTaskId,
+                        if (id != null && taskToEdit != null) {
+                            val updatedTask = taskToEdit!!.copy(
                                 title = title,
                                 description = description.ifBlank { null }
                             )
-                            tasks = tasks + newTask
+                            viewModel.updateTask(updatedTask)
+                        } else {
+                            viewModel.addTask(title, description.ifBlank { null })
                         }
-                        showDialog = false
+                        showTaskInputDialog = false
                         taskToEdit = null
                     }
                 )
             }
             if (showDeleteConfirmDialog && taskToDelete != null) {
                 DeleteConfirmationDialog(
-                    taskTitle = taskToDelete!!.title, // Usamos !! pois showDeleteConfirmDialog só é true se taskToDelete não for null
+                    taskTitle = taskToDelete!!.title,
                     onDismissRequest = {
                         showDeleteConfirmDialog = false
                         taskToDelete = null
                     },
                     onConfirmClick = {
-                        tasks = tasks.filterNot { it.id == taskToDelete!!.id }
+                        viewModel.deleteTask(taskToDelete!!)
                         showDeleteConfirmDialog = false
                         taskToDelete = null
                     }
@@ -181,14 +168,14 @@ fun TodoListApp() {
 @Composable
 fun TaskList(
     tasks: List<Task>,
-    onTaskCheckedChanged: (Task, Boolean) -> Unit,
+    onTaskCheckedChanged: (Task) -> Unit,
     onTaskClick: (Task) -> Unit,
     onDeleteClick: (Task) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp) // Espaçamento entre os cards
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(tasks, key = { task -> task.id }) { task ->
             TaskItem(
@@ -204,34 +191,34 @@ fun TaskList(
 @Composable
 fun TaskItem(
     task: Task,
-    onTaskCheckedChanged: (Task, Boolean) -> Unit,
+    onTaskCheckedChanged: (Task) -> Unit,
     onTaskClick: (Task) -> Unit,
     onDeleteClick: (Task) -> Unit
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth() // Modificado de fillMaxSize
-            .clickable { onTaskClick(task) }, // Tornar o Card clicável
+            .fillMaxWidth()
+            .clickable { onTaskClick(task) },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-        Row( // Usar Row para alinhar Checkbox e o conteúdo do texto
+        Row(
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxWidth(), // Para que a Row ocupe a largura do Card
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
                 checked = task.isCompleted,
-                onCheckedChange = { isChecked ->
-                    onTaskCheckedChanged(task, isChecked)
+                onCheckedChange = { _ ->
+                    onTaskCheckedChanged(task)
                 }
             )
-            Spacer(modifier = Modifier.width(8.dp)) // Espaçamento entre Checkbox e texto
+            Spacer(modifier = Modifier.width(8.dp))
             Column(
-                modifier = Modifier.weight(1f) // Dar peso para a coluna ocupar o espaço restante
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = task.title,
@@ -243,7 +230,7 @@ fun TaskItem(
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), // Cor um pouco mais clara
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
                     )
                 }
@@ -251,8 +238,8 @@ fun TaskItem(
             IconButton(onClick = { onDeleteClick(task) }) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
-                    contentDescription = "Excluir Tarefa",
-                    tint = MaterialTheme.colorScheme.error // Usar uma cor que indique perigo/erro
+                    contentDescription = stringResource(id = R.string.task_item_delete_button_content_description),
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -268,9 +255,9 @@ fun EmptyTasksView() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Você não possui atividades.\nComece criando uma agora!",
+            text = stringResource(id = R.string.empty_tasks_message),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f) // Cor um pouco mais clara
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
     }
 }
@@ -279,7 +266,61 @@ fun EmptyTasksView() {
 @Composable
 fun DefaultPreview() {
     ToDoTasksTheme {
-        TodoListApp()
+        class PreviewTasksViewModel : TasksViewModel(
+            TasksRepository(
+                object : TaskDao {
+                    override fun getAllTasks(): Flow<List<Task>> {
+                        return flowOf(
+                            listOf(
+                                Task(
+                                    id = 1,
+                                    title = "Comprar pão",
+                                    description = "Na padaria da esquina",
+                                    isCompleted = false
+                                ),
+                                Task(id = 2, title = "Lavar o carro", isCompleted = true),
+                                Task(
+                                    id = 3,
+                                    title = "Ler documentação do Compose",
+                                    description = "Capítulos 1 ao 5"
+                                )
+                            )
+                        )
+                    }
+
+                    override suspend fun getTaskById(taskId: Int): Task? {
+                        if (taskId == 1) {
+                            return Task(
+                                id = 1,
+                                title = "Comprar pão",
+                                description = "Na padaria da esquina",
+                                isCompleted = false
+                            )
+                        }
+                        return null
+                    }
+
+                    override suspend fun insertTask(task: Task): Long {
+
+                        println("PreviewTaskDao: insertTask chamada com $task")
+                        return task.id.toLong()
+                    }
+
+                    override suspend fun updateTask(task: Task) {
+                        println("PreviewTaskDao: updateTask chamada com $task")
+                    }
+
+                    override suspend fun deleteTask(task: Task) {
+                        println("PreviewTaskDao: deleteTask chamada com $task")
+                    }
+                }
+            )
+        ) {
+            init {
+                _tasks.value = listOf(Task(1, "Preview Task 1"))
+            }
+        }
+        TodoListApp(PreviewTasksViewModel())
     }
 }
 
