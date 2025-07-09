@@ -3,6 +3,7 @@ package com.rbfelicio.todotasks
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -65,6 +67,7 @@ fun TodoListApp() {
     // Estado para armazenar a lista de tarefas (inicialmente vazia)
     var tasks by remember { mutableStateOf(emptyList<Task>()) }
     var showDialog by remember { mutableStateOf(false) }
+    var taskToEdit by remember { mutableStateOf<Task?>(null) }
 
     Scaffold(
         topBar = {
@@ -79,6 +82,7 @@ fun TodoListApp() {
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
+                    taskToEdit = null
                     showDialog = true
                 },
                 containerColor = MaterialTheme.colorScheme.secondary,
@@ -107,22 +111,42 @@ fun TodoListApp() {
                                 currentTask
                             }
                         }
+                    },
+                    onTaskClick = { task ->
+                        taskToEdit = task
                     }
                 )
             }
 
-            if (showDialog) {
+            if (showDialog || taskToEdit != null) {
                 AddTaskDialog(
-                    onDismissRequest = { showDialog = false },
-                    onConfirmClick = { title, description ->
-                        val newTaskId = (tasks.maxOfOrNull { it.id } ?: 0) + 1
-                        val newTask = Task(
-                            id = newTaskId,
-                            title = title,
-                            description = description.ifBlank { null }
-                        )
-                        tasks = tasks + newTask
+                    existingTask = taskToEdit,
+                    onDismissRequest = {
                         showDialog = false
+                        taskToEdit = null
+                    },
+                    onConfirmClick = { title, description, id ->
+                        if (id != null) {
+                            tasks = tasks.map {
+                                if (it.id == id) {
+                                    it.copy(
+                                        title = title,
+                                        description = description.ifBlank { null })
+                                } else {
+                                    it
+                                }
+                            }
+                        } else {
+                            val newTaskId = (tasks.maxOfOrNull { it.id } ?: 0) + 1
+                            val newTask = Task(
+                                id = newTaskId,
+                                title = title,
+                                description = description.ifBlank { null }
+                            )
+                            tasks = tasks + newTask
+                        }
+                        showDialog = false
+                        taskToEdit = null
                     }
                 )
             }
@@ -133,7 +157,8 @@ fun TodoListApp() {
 @Composable
 fun TaskList(
     tasks: List<Task>,
-    onTaskCheckedChanged: (Task, Boolean) -> Unit
+    onTaskCheckedChanged: (Task, Boolean) -> Unit,
+    onTaskClick: (Task) -> Unit // Adicionar este parâmetro
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -143,7 +168,8 @@ fun TaskList(
         items(tasks, key = { task -> task.id }) { task ->
             TaskItem(
                 task = task,
-                onTaskCheckedChanged = onTaskCheckedChanged
+                onTaskCheckedChanged = onTaskCheckedChanged,
+                onTaskClick = onTaskClick
             )
         }
     }
@@ -152,10 +178,13 @@ fun TaskList(
 @Composable
 fun TaskItem(
     task: Task,
-    onTaskCheckedChanged: (Task, Boolean) -> Unit
+    onTaskCheckedChanged: (Task, Boolean) -> Unit,
+    onTaskClick: (Task) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxWidth() // Modificado de fillMaxSize
+            .clickable { onTaskClick(task) }, // Tornar o Card clicável
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -175,7 +204,7 @@ fun TaskItem(
             )
             Spacer(modifier = Modifier.width(8.dp)) // Espaçamento entre Checkbox e texto
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.weight(1f) // Dar peso para a coluna ocupar o espaço restante
             ) {
                 Text(
                     text = task.title,
@@ -192,6 +221,7 @@ fun TaskItem(
                     )
                 }
             }
+            Icon(Icons.Filled.Edit, contentDescription = "Editar Tarefa")
         }
     }
 }

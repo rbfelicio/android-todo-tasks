@@ -6,19 +6,32 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.rbfelicio.todotasks.Task
 
 @Composable
 fun AddTaskDialog(
+    existingTask: Task? = null,
     onDismissRequest: () -> Unit,
-    onConfirmClick: (title: String, description: String) -> Unit
+    onConfirmClick: (title: String, description: String, id: Int?) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-
+    var title by remember { mutableStateOf(existingTask?.title ?: "") }
+    var description by remember { mutableStateOf(existingTask?.description ?: "") }
+    LaunchedEffect(existingTask) {
+        if (existingTask != null) {
+            title = existingTask.title
+            description = existingTask.description ?: ""
+        } else {
+            // Se for para adicionar uma nova, limpar os campos
+            // (geralmente não necessário se o diálogo é recriado, mas bom para robustez)
+            // title = ""
+            // description = ""
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text("Adicionar Nova Tarefa") },
@@ -40,12 +53,12 @@ fun AddTaskDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (title.isNotBlank()) { // Adiciona apenas se o título não estiver vazio
-                        onConfirmClick(title, description)
+                    if (title.isNotBlank()) {
+                        onConfirmClick(title, description, existingTask?.id)
                     }
                 }
             ) {
-                Text("Adicionar")
+                Text(if (existingTask == null) "Adicionar" else "Salvar")
             }
         },
         dismissButton = {
